@@ -43,6 +43,8 @@ class ProMortImporter(object):
         parser.add_argument('--host', type=str, required=True, help='ProMort host')
         parser.add_argument('--user', type=str, required=True, help='ProMort user')
         parser.add_argument('--passwd', type=str, required=True, help='ProMost password')
+        parser.add_argument('--session-id', type=str, default='promort_sessionid',
+                            help='ProMort session cookie name')
         parser.add_argument('--log-level', type=str, choices=LOG_LEVELS,
                             default='INFO', help='logging level (default=INFO')
         parser.add_argument('--log-file', type=str, default=None, help='log file (default=stderr)')
@@ -78,7 +80,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     logger = app.get_logger(args.log_level, args.log_file)
     try:
-        args.func(args.host, args.user, args.passwd, logger, args)
+        args.func(args.host, args.user, args.passwd, args.session_id, logger, args)
     except argparse.ArgumentError as arg_err:
         logger.critical(arg_err)
         sys.exit(arg_err)

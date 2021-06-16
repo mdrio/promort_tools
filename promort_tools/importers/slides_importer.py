@@ -28,8 +28,8 @@ from functools import reduce
 
 class SlideImporter(object):
 
-    def __init__(self, host, user, passwd, logger):
-        self.promort_client = ProMortClient(host, user, passwd, 'promort_sessionid')
+    def __init__(self, host, user, passwd, session_id, logger):
+        self.promort_client = ProMortClient(host, user, passwd, session_id)
         self.logger = logger
 
     def _get_case_label(self, slide_label):
@@ -109,8 +109,8 @@ TBD
 """
 
 
-def implementation(host, user, passwd, logger, args):
-    slide_importer = SlideImporter(host, user, passwd, logger)
+def implementation(host, user, passwd, session_id, logger, args):
+    slide_importer = SlideImporter(host, user, passwd, session_id, logger)
     slide_importer.run(args)
 
 
