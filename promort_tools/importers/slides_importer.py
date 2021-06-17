@@ -48,7 +48,8 @@ class SlideImporter(object):
             self.logger.error('ERROR while creating Case: {0}'.format(response.text))
             sys.exit('ERROR while creating Case')
 
-    def _import_slide(self, slide_label, case_label, omero_id=None, mirax_file=False, omero_host=None):
+    def _import_slide(self, slide_label, case_label, omero_id=None, mirax_file=False,
+                      omero_host=None, ignore_duplicated=False):
         if mirax_file:
             file_type = 'MIRAX'
         else:
@@ -62,8 +63,13 @@ class SlideImporter(object):
             if omero_id is not None and omero_host is not None:
                 self._update_slide(slide_label, omero_id, mirax_file, omero_host)
         elif response.status_code == requests.codes.CONFLICT:
-            self.logger.error('A slide with the same ID already exists')
-            sys.exit('ERROR: duplicated slide')
+            if ignore_duplicated:
+                self.logger.info('Slide already exists')
+                if omero_id is not None and omero_host is not None:
+                    self._update_slide(slide_label, omero_id, mirax_file, omero_host)
+            else:
+                self.logger.error('A slide with the same ID already exists')
+                sys.exit('ERROR: duplicated slide')
         elif response.status_code == requests.codes.BAD:
             self.logger.error('ERROR while creating Slide: {0}'.format(response.text))
             sys.exit('ERROR while creating Slide')
@@ -99,7 +105,8 @@ class SlideImporter(object):
             self.logger.critical('Authentication error, exit')
             sys.exit('Authentication error, exit')
         self._import_case(case_label)
-        self._import_slide(args.slide_label, case_label, args.omero_id, args.mirax, args.omero_host)
+        self._import_slide(args.slide_label, case_label, args.omero_id, args.mirax,
+                           args.omero_host, args.ignore_duplicated)
         self.logger.info('Import job completed')
         self.promort_client.logout()
 
@@ -123,6 +130,8 @@ def make_parser(parser):
                         help='OMERO host used to retrieve slide details (if omero-id was specified)')
     parser.add_argument('--mirax', action='store_true', help='slide is a 3DHISTECH MIRAX')
     parser.add_argument('--extract-case', action='store_true', help='extract case ID from slide label')
+    parser.add_argument('--ignore-duplicated', action='store_true',
+                        help='if enabled, trying to import an existing slide will not produce an error')
 
 
 def register(registration_list):
