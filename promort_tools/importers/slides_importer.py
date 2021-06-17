@@ -85,7 +85,7 @@ class SlideImporter(object):
             slide_mpp = response.json()['image_mpp']
             response = self.promort_client.put(
                 api_url='api/slides/{0}/'.format(slide_label),
-                payload={'image_microns_per_pixel': slide_mpp}
+                payload={'image_microns_per_pixel': slide_mpp, 'omero_id': omero_id}
             )
             self.logger.info('Slide updated')
 
