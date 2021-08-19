@@ -21,7 +21,8 @@ import argparse, logging, sys
 from importlib import import_module
 
 SUBMODULES_NAMES = [
-    'slides_importer'
+    'slides_importer',
+    'predictions_importer'
 ]
 
 SUBMODULES = [import_module('%s.%s' % ('promort_tools.importers', n)) for n in SUBMODULES_NAMES]
