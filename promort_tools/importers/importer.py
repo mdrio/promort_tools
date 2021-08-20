@@ -17,8 +17,10 @@
 #  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import argparse, logging, sys
+import argparse, sys
 from importlib import import_module
+
+from promort_tools.libs.utils.logger import get_logger, LOG_LEVELS
 
 SUBMODULES_NAMES = [
     'slides_importer',
@@ -26,10 +28,6 @@ SUBMODULES_NAMES = [
 ]
 
 SUBMODULES = [import_module('%s.%s' % ('promort_tools.importers', n)) for n in SUBMODULES_NAMES]
-
-LOG_FORMAT = '%(asctime)s|%(levelname)-8s|%(message)s'
-LOG_DATEFMT = '%Y-%m-%d %H:%M:%S'
-LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
 
 class ProMortImporter(object):
@@ -56,30 +54,12 @@ class ProMortImporter(object):
             subparser.set_defaults(func=impl)
         return parser
 
-    def get_logger(self, log_level, log_file, mode='a'):
-        logger = logging.getLogger('odin')
-        if not isinstance(log_level, int):
-            try:
-                log_level = getattr(logging, log_level)
-            except AttributeError:
-                raise ValueError('Unsupported literal log level: %s' % log_level)
-        logger.setLevel(log_level)
-        logger.handlers = []
-        if log_file:
-            handler = logging.FileHandler(log_file, mode=mode)
-        else:
-            handler = logging.StreamHandler()
-        formatter = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATEFMT)
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        return logger
-
 
 def main(argv=None):
     app = ProMortImporter()
     parser = app.make_parser()
     args = parser.parse_args(argv)
-    logger = app.get_logger(args.log_level, args.log_file)
+    logger = get_logger(args.log_level, args.log_file)
     try:
         args.func(args.host, args.user, args.passwd, args.session_id, logger, args)
     except argparse.ArgumentError as arg_err:
