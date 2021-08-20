@@ -24,10 +24,7 @@ except ImportError:
 
 from ..libs.client import ProMortClient, ProMortAuthenticationError
 
-from argparse import ArgumentError
 import sys, requests
-from urllib.parse import urljoin
-from functools import reduce
 
 PREDICTION_TYPES = ['TISSUE', 'TUMOR', 'GLEASON']
 
