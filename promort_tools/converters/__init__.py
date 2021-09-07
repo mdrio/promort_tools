@@ -16,27 +16,3 @@
 #  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 #  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-import setuptools
-
-with open('requirements.txt') as f:
-    requirements = [line for line in f]
-
-with open('VERSION') as f:
-    VERSION = f.read()
-
-setuptools.setup(
-    name="promort_tools",
-    version=VERSION,
-    description="A client and a set of tools for the ProMort platform",
-    long_description_content_type="text/markdown",
-    packages=setuptools.find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-    ],
-    python_requires='>=3.9',
-    install_requires=requirements,
-    scripts=[
-        './promort_tools/importers/importer.py',
-        './promort_tools/converters/zarr_to_tiledb.py']
-    )
