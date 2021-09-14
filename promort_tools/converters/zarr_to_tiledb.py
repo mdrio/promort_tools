@@ -45,7 +45,7 @@ class ZarrToTileDBConverter(object):
     def _get_tiledb_path(self, zarr_dataset, out_folder):
         return os.path.join(
             out_folder,
-            '{0}.tiledb'.format(os.path.splitext(os.path.basename(zarr_dataset.attrs['filename']))[0])
+            '{0}.tiledb'.format(os.path.basename(os.path.normpath(zarr_dataset)))
         )
 
     def _init_tiledb_dataset(self, dataset_path, dataset_shape, zarr_attributes):
@@ -62,7 +62,8 @@ class ZarrToTileDBConverter(object):
         tiledb_data = dict()
         tiledb_meta = {
             'original_width': slide_resolution[0],
-            'original_height': slide_resolution[1]
+            'original_height': slide_resolution[1],
+            'slide_path': zarr_dataset.attrs['filename']
         }
         for arr_label, arr_data in zarr_dataset.arrays():
             tiledb_data[arr_label] = arr_data[:]
@@ -87,7 +88,7 @@ class ZarrToTileDBConverter(object):
             self.logger.error('Missing key {0} in zarr attributes, exit'.format(ke))
             sys.exit('Missing key {0}'.format(ke))
         dset_shape = self._get_array_shape(z)
-        tiledb_dataset_path = self._get_tiledb_path(z, out_folder)
+        tiledb_dataset_path = self._get_tiledb_path(zarr_dataset, out_folder)
         self.logger.info('TileDB dataset path: {0}'.format(tiledb_dataset_path))
         attributes = self._get_array_attributes(z)
         self._init_tiledb_dataset(tiledb_dataset_path, dset_shape, attributes)
