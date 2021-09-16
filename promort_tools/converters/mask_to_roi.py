@@ -40,9 +40,10 @@ class MaskToROIConverter:
     def run(self, mask_path, threshold, output_path=None):
 
         mask, original_resolution = self._load_mask(mask_path)
-        mask = np.array(mask)
+
         mask[mask < threshold] = 0
         mask[mask >= threshold] = 1
+
         cores = self._filter_cores(self._get_cores(mask), mask.size)
         #  grouped_cores = self._group_nearest_cores(cores, mask.shape[0])
         scale_factor = self._get_scale_factor(original_resolution, mask.shape)
@@ -61,6 +62,7 @@ class MaskToROIConverter:
         # retrieving the first array
         key = list(group.array_keys())[0]
         mask = group[key]
+        mask = np.array(mask)
         resolution = group.attrs['resolution']
         return mask, resolution
 
