@@ -41,8 +41,7 @@ class MaskToROIConverter:
 
         mask, original_resolution = self._load_mask(mask_path)
 
-        mask[mask < threshold] = 0
-        mask[mask >= threshold] = 1
+        self._apply_threshold(mask, threshold)
 
         cores = self._filter_cores(self._get_cores(mask), mask.size)
         #  grouped_cores = self._group_nearest_cores(cores, mask.shape[0])
@@ -51,6 +50,11 @@ class MaskToROIConverter:
 
         output_path = output_path or f'{os.path.splitext(mask_path)[0]}.json'
         self._save(slide_json, output_path)
+
+    @staticmethod
+    def _apply_threshold(mask: np.ndarray, threshold: int) -> np.ndarray:
+        mask[mask < threshold] = 0
+        mask[mask >= threshold] = 1
 
     @staticmethod
     def _save(slide_json, output_path):
