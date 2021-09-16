@@ -19,6 +19,7 @@
 
 import argparse
 import json
+import os
 import sys
 from math import log, sqrt
 from random import randint
@@ -36,12 +37,19 @@ class MaskToROIConverter:
     def __init__(self, logger):
         self.logger = logger
 
-    def run(self, mask_path, output_path):
+    def run(self, mask_path, output_path=None):
+
         mask, original_resolution = self._load_mask(mask_path)
         cores = self._filter_cores(self._get_cores(mask), mask.size)
         #  grouped_cores = self._group_nearest_cores(cores, mask.shape[0])
         scale_factor = self._get_scale_factor(original_resolution, mask.shape)
         slide_json = self._build_slide_json(cores, scale_factor)
+
+        output_path = output_path or f'{os.path.splitext(mask_path)[0]}.json'
+        self._save(slide_json, output_path)
+
+    @staticmethod
+    def _save(slide_json, output_path):
         with open(output_path, 'w') as ofile:
             ofile.write(json.dumps(slide_json))
 
@@ -255,14 +263,15 @@ class InvalidPolygonError(Exception):
 
 def make_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mask',
+    parser.add_argument('mask',
                         type=str,
-                        required=True,
-                        help='path to the ZARR dataset to be converted')
-    parser.add_argument('--out-file',
-                        type=str,
-                        required=True,
-                        help='output file for TileDB dataset')
+                        help='path to the dataset to be converted')
+    parser.add_argument(
+        '--out-file',
+        type=str,
+        help=
+        'output file json for the serialized ROIs. Default: mask path with json extension'
+    )
     parser.add_argument('--log-level',
                         type=str,
                         choices=LOG_LEVELS,
@@ -280,7 +289,7 @@ def main(argv):
     args = parser.parse_args(argv)
     logger = get_logger(args.log_level, args.log_file)
     app = MaskToROIConverter(logger)
-    app.run(args.mask, args.out_folder)
+    app.run(args.mask, args.out_file)
 
 
 if __name__ == '__main__':
