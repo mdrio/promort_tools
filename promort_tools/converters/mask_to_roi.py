@@ -37,9 +37,12 @@ class MaskToROIConverter:
     def __init__(self, logger):
         self.logger = logger
 
-    def run(self, mask_path, output_path=None):
+    def run(self, mask_path, threshold, output_path=None):
 
         mask, original_resolution = self._load_mask(mask_path)
+        mask = np.array(mask)
+        mask[mask < threshold] = 0
+        mask[mask >= threshold] = 1
         cores = self._filter_cores(self._get_cores(mask), mask.size)
         #  grouped_cores = self._group_nearest_cores(cores, mask.shape[0])
         scale_factor = self._get_scale_factor(original_resolution, mask.shape)
@@ -69,7 +72,7 @@ class MaskToROIConverter:
         return contours
 
     def _contour_to_shape(self, contour):
-        normalize_contour = list()
+        normalize_contour = []
         for x in contour:
             normalize_contour.append(tuple(x[0]))
         try:
@@ -78,7 +81,7 @@ class MaskToROIConverter:
             return None
 
     def _filter_cores(self, cores, slide_area, core_min_area=0.02):
-        accepted_cores = list()
+        accepted_cores = []
         for core in cores:
             if (core.get_area() * 100 / slide_area) >= core_min_area:
                 accepted_cores.append(core)
@@ -90,21 +93,13 @@ class MaskToROIConverter:
         self.logger.info('Scale factor is %r', scale_factor)
         return scale_factor
 
-    def _build_slide_json(self, cores_group, scale_factor):
+    def _build_slide_json(self, cores, scale_factor):
         scale_factor = log(scale_factor, 2)
-        slide_shapes = list()
-        for group in cores_group:
-            slice = self._get_slice(group)
-            slice_map = {
-                'coordinates':
-                slice.get_coordinates(scale_factor),
-                'cores': [{
-                    'coordinates': c.get_coordinates(scale_factor),
-                    'length': c.get_length(scale_factor),
-                    'area': c.get_area(scale_factor)
-                } for c in group]
-            }
-            slide_shapes.append(slice_map)
+        slide_shapes = [{
+            'coordinates': c.get_coordinates(scale_factor),
+            'length': c.get_length(scale_factor),
+            'area': c.get_area(scale_factor)
+        } for c in cores]
         return slide_shapes
 
     def _get_slice(self, cores_group):
@@ -114,6 +109,30 @@ class MaskToROIConverter:
         y_max = max([c.get_bounds()['y_max'] for c in cores_group])
         return Shape([(x_min, y_min), (x_max, y_min), (x_max, y_max),
                       (x_min, y_max)])
+
+    def _group_nearest_cores(self, cores, slide_height, height_tolerance=0.01):
+        cores_map, sorted_y_coords = self._get_sorted_cores_map(cores)
+        cores_groups = []
+        tolerance = slide_height * height_tolerance
+        current_group = cores_map[sorted_y_coords[0]]
+        for i, yc in enumerate(sorted_y_coords[1:]):
+            if yc[0] <= sorted_y_coords[i][1] + tolerance:
+                current_group.extend(cores_map[yc])
+            else:
+                cores_groups.append(current_group)
+                current_group = cores_map[yc]
+        cores_groups.append(current_group)
+        return cores_groups
+
+    def _get_sorted_cores_map(self, cores):
+        cores_map = dict()
+        for c in cores:
+            bounds = c.get_bounds()
+            cores_map.setdefault((bounds['y_min'], bounds['y_max']),
+                                 []).append(c)
+        sorted_y_coords = cores_map.keys()
+        sorted_y_coords.sort(key=lambda x: x[0])
+        return cores_map, sorted_y_coords
 
 
 class Shape:
@@ -272,6 +291,12 @@ def make_parser():
         help=
         'output file json for the serialized ROIs. Default: mask path with json extension'
     )
+    parser.add_argument(
+        '-t',
+        dest='threshold',
+        type=int,
+        required=True,
+        help='threshold for generating the ROI. Integer in [0, 100] range')
     parser.add_argument('--log-level',
                         type=str,
                         choices=LOG_LEVELS,
@@ -289,7 +314,7 @@ def main(argv):
     args = parser.parse_args(argv)
     logger = get_logger(args.log_level, args.log_file)
     app = MaskToROIConverter(logger)
-    app.run(args.mask, args.out_file)
+    app.run(args.mask, args.threshold, args.out_file)
 
 
 if __name__ == '__main__':
