@@ -34,9 +34,9 @@ setuptools.setup(
     classifiers=[
         "Programming Language :: Python :: 3",
     ],
-    python_requires='>=3.9',
+    python_requires='>=3.8',
     install_requires=requirements,
     scripts=[
         './promort_tools/importers/importer.py',
-        './promort_tools/converters/zarr_to_tiledb.py']
-    )
+        './promort_tools/converters/zarr_to_tiledb.py'
+    ])
