@@ -48,7 +48,6 @@ class MaskToROIConverter:
         scale_factor = self._get_scale_factor(original_resolution, mask.shape)
         slide_json = self._build_slide_json(cores, scale_factor)
 
-        output_path = output_path or f'{os.path.splitext(mask_path)[0]}.json'
         self._save(slide_json, output_path)
 
     @staticmethod
@@ -58,8 +57,11 @@ class MaskToROIConverter:
 
     @staticmethod
     def _save(slide_json, output_path):
-        with open(output_path, 'w') as ofile:
-            ofile.write(json.dumps(slide_json))
+        if output_path is None:
+            print(json.dumps(slide_json))
+        else:
+            with open(output_path, 'w') as ofile:
+                json.dump(slide_json, ofile)
 
     def _load_mask(self, mask_path):
         group = zarr.open(mask_path)
@@ -292,11 +294,10 @@ def make_parser():
                         type=str,
                         help='path to the dataset to be converted')
     parser.add_argument(
-        '--out-file',
+        '-o',
+        dest='out_file',
         type=str,
-        help=
-        'output file json for the serialized ROIs. Default: mask path with json extension'
-    )
+        help='output file json for the serialized ROIs. Default: STDOUT')
     parser.add_argument(
         '-t',
         dest='threshold',
