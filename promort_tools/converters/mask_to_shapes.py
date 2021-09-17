@@ -35,65 +35,6 @@ from promort_tools.libs.utils.logger import LOG_LEVELS, get_logger
 LOGGER = logging.getLogger()
 
 
-def main(argv):
-    parser = _make_parser()
-    args = parser.parse_args(argv)
-
-    global LOGGER
-    LOGGER = get_logger(args.log_level, args.log_file)
-
-    mask, original_resolution = _read_group(args.mask)
-    shapes = convert_to_shapes(mask, original_resolution, args.threshold)
-
-    _save_shapes(shapes, args.out_file)
-
-
-def _make_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('mask',
-                        type=str,
-                        help='path to the dataset to be converted')
-    parser.add_argument(
-        '-o',
-        dest='out_file',
-        type=str,
-        help='output file json for the serialized ROIs. Default: STDOUT')
-    parser.add_argument(
-        '-t',
-        dest='threshold',
-        type=int,
-        required=True,
-        help='threshold for generating the ROI. Integer in [0, 100] range')
-    parser.add_argument('--log-level',
-                        type=str,
-                        choices=LOG_LEVELS,
-                        default='INFO',
-                        help='log level (default=INFO)')
-    parser.add_argument('--log-file',
-                        type=str,
-                        default=None,
-                        help='log file (default=stderr)')
-    return parser
-
-
-def _read_group(path: str) -> Tuple[np.ndarray, Tuple[int, int]]:
-    group = zarr.open(path)
-    # retrieving the first array
-    key = list(group.array_keys())[0]
-    mask = group[key]
-    mask = np.array(mask)
-    resolution = group.attrs['resolution']
-    return mask, resolution
-
-
-def _save_shapes(shapes: Dict, output_path: str):
-    if output_path is None:
-        print(json.dumps(shapes))
-    else:
-        with open(output_path, 'w') as ofile:
-            json.dump(shapes, ofile)
-
-
 def convert_to_shapes(mask: np.ndarray, original_resolution: Tuple[int, int],
                       threshold: int):
     def _apply_threshold(mask: np.ndarray, threshold: int) -> np.ndarray:
@@ -214,6 +155,65 @@ class Shape:
 
 class InvalidPolygonError(Exception):
     ...
+
+
+def main(argv):
+    parser = _make_parser()
+    args = parser.parse_args(argv)
+
+    global LOGGER
+    LOGGER = get_logger(args.log_level, args.log_file)
+
+    mask, original_resolution = _read_group(args.mask)
+    shapes = convert_to_shapes(mask, original_resolution, args.threshold)
+
+    _save_shapes(shapes, args.out_file)
+
+
+def _make_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('mask',
+                        type=str,
+                        help='path to the dataset to be converted')
+    parser.add_argument(
+        '-o',
+        dest='out_file',
+        type=str,
+        help='output file json for the serialized ROIs. Default: STDOUT')
+    parser.add_argument(
+        '-t',
+        dest='threshold',
+        type=int,
+        required=True,
+        help='threshold for generating the ROI. Integer in [0, 100] range')
+    parser.add_argument('--log-level',
+                        type=str,
+                        choices=LOG_LEVELS,
+                        default='INFO',
+                        help='log level (default=INFO)')
+    parser.add_argument('--log-file',
+                        type=str,
+                        default=None,
+                        help='log file (default=stderr)')
+    return parser
+
+
+def _read_group(path: str) -> Tuple[np.ndarray, Tuple[int, int]]:
+    group = zarr.open(path)
+    # retrieving the first array
+    key = list(group.array_keys())[0]
+    mask = group[key]
+    mask = np.array(mask)
+    resolution = group.attrs['resolution']
+    return mask, resolution
+
+
+def _save_shapes(shapes: Dict, output_path: str):
+    if output_path is None:
+        print(json.dumps(shapes))
+    else:
+        with open(output_path, 'w') as ofile:
+            json.dump(shapes, ofile)
 
 
 if __name__ == '__main__':
