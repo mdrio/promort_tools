@@ -36,6 +36,7 @@ setuptools.setup(
     ],
     python_requires='>=3.8',
     install_requires=requirements,
+    extras_require={'dev': ['pytest']},
     scripts=[
         './promort_tools/importers/importer.py',
         './promort_tools/converters/zarr_to_tiledb.py'
