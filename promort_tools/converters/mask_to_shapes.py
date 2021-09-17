@@ -45,6 +45,7 @@ def convert_to_shapes(mask: np.ndarray, original_resolution: Tuple[int, int],
         contours, _ = cv2.findContours(mask,
                                        mode=cv2.RETR_EXTERNAL,
                                        method=cv2.CHAIN_APPROX_SIMPLE)
+        LOGGER.debug('contours %s', contours)
         contours = filter(None, [_contour_to_shape(c) for c in contours])
         return contours
 
