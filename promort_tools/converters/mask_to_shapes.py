@@ -92,6 +92,9 @@ class Shape:
     def __init__(self, segments):
         self.polygon = Polygon(segments)
 
+    def __str__(self):
+        return str(self.polygon)
+
     def get_bounds(self):
         bounds = self.polygon.bounds
         try:
