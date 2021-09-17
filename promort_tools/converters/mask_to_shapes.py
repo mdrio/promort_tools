@@ -168,8 +168,11 @@ def main(argv):
     global LOGGER
     LOGGER = get_logger(args.log_level, args.log_file)
 
-    mask, original_resolution = _read_group(args.mask)
-    shapes = convert_to_shapes(mask, original_resolution, args.threshold)
+    mask, original_resolution, round_to_0_100 = _read_group(args.mask)
+    threshold = round(args.threshold *
+                      100) if round_to_0_100 else args.threshold
+
+    shapes = convert_to_shapes(mask, original_resolution, threshold)
 
     _save_shapes(shapes, args.out_file)
 
@@ -187,9 +190,9 @@ def _make_parser():
     parser.add_argument(
         '-t',
         dest='threshold',
-        type=int,
+        type=float,
         required=True,
-        help='threshold for generating the ROI. Integer in [0, 100] range')
+        help='threshold for generating the ROI. Float in range [0, 1].')
     parser.add_argument('--log-level',
                         type=str,
                         choices=LOG_LEVELS,
@@ -202,14 +205,15 @@ def _make_parser():
     return parser
 
 
-def _read_group(path: str) -> Tuple[np.ndarray, Tuple[int, int]]:
+def _read_group(path: str) -> Tuple[np.ndarray, Tuple[int, int, bool]]:
     group = zarr.open(path)
     # retrieving the first array
     key = list(group.array_keys())[0]
     mask = group[key]
+    round_to_0_100 = mask.attrs['round_to_0_100']
     mask = np.array(mask)
     resolution = group.attrs['resolution']
-    return mask, resolution
+    return mask, resolution, round_to_0_100
 
 
 def _save_shapes(shapes: Dict, output_path: str):
