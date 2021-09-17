@@ -39,5 +39,6 @@ setuptools.setup(
     extras_require={'dev': ['pytest']},
     scripts=[
         './promort_tools/importers/importer.py',
-        './promort_tools/converters/zarr_to_tiledb.py'
+        './promort_tools/converters/zarr_to_tiledb.py',
+        './promort_tools/converters/mask_to_shapes.py'
     ])
