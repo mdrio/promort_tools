@@ -27,8 +27,7 @@ from typing import Dict, Tuple
 import cv2
 import numpy as np
 import zarr
-from shapely.affinity import scale
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point
 
 from promort_tools.libs.utils.logger import LOG_LEVELS, get_logger
 
@@ -131,8 +130,26 @@ class Shape:
         return radius * 2
 
     def _rescale_polygon(self, scale_level):
-        scaling = pow(2, scale_level)
-        return scale(self.polygon, xfact=scaling, yfact=scaling, origin=(0, 0))
+        def scale_coords(coords, scale_factor, scale_level):
+            new_coords = []
+            for i in range(2):
+                tmp_coords = list(coords)
+                tmp_coords[i] += 1
+                tmp_point = Point(tmp_coords)
+                if not (self.polygon.contains(tmp_point)
+                        or self.polygon.touches(tmp_point)):
+                    new_coords.append(coords[i] * scale_factor + scale_level *
+                                      (scale_level + 1) // 2)
+                else:
+                    new_coords.append(coords[i] * scale_factor)
+            return new_coords
+
+        scale_factor = pow(2, scale_level)
+        new_coords = []
+        for point in self.polygon.exterior.coords:
+            new_coords.append(scale_coords(point, scale_factor, scale_level))
+
+        return Polygon(new_coords)
 
     def get_full_mask(self, scale_level=0, tolerance=0):
         if scale_level != 0:
