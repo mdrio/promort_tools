@@ -35,7 +35,7 @@ def test_mask_to_shapes_th_50(square_mask, scale_factor):
     assert coordinates[4] == (0, 0)
 
 
-@pytest.mark.parametrize('scale_factor', [1, 2, 4])
+@pytest.mark.parametrize('scale_factor', [1, 2, 4, 8])
 def test_mask_to_shapes_th_100(square_mask, scale_factor):
     orig_res = [_ * scale_factor for _ in square_mask.shape]
     shapes = convert_to_shapes(square_mask, orig_res, 100)
@@ -54,8 +54,8 @@ def test_rhombus_to_shapes_th_100(rhombus_mask, scale_factor):
     orig_res = [_ * scale_factor for _ in rhombus_mask.shape]
 
     resized_mask = rhombus_mask.repeat(scale_factor, 0).repeat(scale_factor, 1)
-    matprint(rhombus_mask)
-    matprint(resized_mask)
+    #  matprint(rhombus_mask)
+    #  matprint(resized_mask)
     contours, _ = cv2.findContours(resized_mask,
                                    mode=cv2.RETR_EXTERNAL,
                                    method=cv2.CHAIN_APPROX_SIMPLE)

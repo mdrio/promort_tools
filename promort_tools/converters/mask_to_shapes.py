@@ -140,11 +140,18 @@ class Shape:
 
             if self.polygon.touches(Point(np.array(coords) +
                                           np.array([0, 1]))):
+
+                #               ###
+                #               #
+                #
                 if self.polygon.touches(
                         Point(np.array(coords) + np.array([1, 0]))):
 
                     res.append(tuple(np.array(coords) * scale_factor))
 
+#               #
+#               ###
+#
                 elif self.polygon.touches(
                         Point(np.array(coords) + np.array([-1, 0]))):
                     res.append(
@@ -154,6 +161,11 @@ class Shape:
 
             elif self.polygon.touches(
                     Point(np.array(coords) + np.array([0, -1]))):
+
+                #               ###
+                #                 #
+                #
+
                 if self.polygon.touches(
                         Point(np.array(coords) + np.array([1, 0]))):
 
@@ -162,6 +174,10 @@ class Shape:
                             np.array(coords) * scale_factor +
                             np.array([0, 1]) * adjustment))
 
+
+#                 #
+#               ###
+#
                 elif self.polygon.touches(
                         Point(np.array(coords) + np.array([-1, 0]))):
                     res.append(
@@ -172,6 +188,9 @@ class Shape:
             elif self.polygon.touches(
                     Point(np.array(coords) + np.array([1, -1]))):
 
+                #                #   # #
+                #               #     #
+                #                #
                 if self.polygon.touches(
                         Point(np.array(coords) +
                               np.array([1, 1]))) or self.polygon.touches(
@@ -193,6 +212,9 @@ class Shape:
                             np.array(coords) * scale_factor +
                             np.array([1, 1]) * adjustment))
 
+                #             #
+                #           ##
+                #
                 elif self.polygon.touches(
                         Point(np.array(coords) + np.array([-1, 0]))):
                     res.append(
@@ -207,6 +229,9 @@ class Shape:
             elif self.polygon.touches(
                     Point(np.array(coords) + np.array([1, 1]))):
 
+                #           #
+                #          # #
+                #
                 if self.polygon.touches(
                         Point(np.array(coords) + np.array([-1, 1]))):
                     res.append(tuple(np.array(coords) * scale_factor))
@@ -224,6 +249,10 @@ class Shape:
                         tuple(
                             np.array(coords) * scale_factor +
                             np.array([1, 1]) * adjustment))
+
+                #          ##
+                #            #
+                #
                 elif self.polygon.touches(
                         Point(np.array(coords) + np.array([-1, 0]))):
                     res.append(
@@ -296,7 +325,7 @@ class Shape:
 
         scale_factor = pow(2, scale_level)
         new_coords = []
-        adjustment = scale_level * (scale_level + 1) // 2
+        adjustment = scale_factor - 1
         for point in self.polygon.exterior.coords:
             new_coords.extend(scale_coords(point, scale_factor, adjustment))
         #  return Polygon(new_coords).simplify(adjustment)
