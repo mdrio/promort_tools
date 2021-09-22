@@ -27,7 +27,8 @@ from typing import Dict, Tuple
 import cv2
 import numpy as np
 import zarr
-from shapely.geometry import Polygon, Point
+from shapely.affinity import scale
+from shapely.geometry import Point, Polygon
 
 from promort_tools.libs.utils.logger import LOG_LEVELS, get_logger
 
@@ -88,7 +89,8 @@ def convert_to_shapes(mask: np.ndarray, original_resolution: Tuple[int, int],
 
 
 class Shape:
-    def __init__(self, segments):
+    def __init__(self, segments, scale_func=None):
+        self.scale_func = scale_func or shapely_scale
         self.polygon = Polygon(segments)
 
     def __str__(self):
@@ -133,203 +135,8 @@ class Shape:
         return self.polygon.touches(point) or self.polygon.contains(point)
 
     def _rescale_polygon(self, scale_level):
-        def scale_coords(coords, scale_factor, adjustment):
-            res = []
-            #  import pudb
-            #  pudb.set_trace()
-
-            if self.polygon.touches(Point(np.array(coords) +
-                                          np.array([0, 1]))):
-
-                #               ###
-                #               #
-                #
-                if self.polygon.touches(
-                        Point(np.array(coords) + np.array([1, 0]))):
-
-                    res.append(tuple(np.array(coords) * scale_factor))
-
-#               #
-#               ###
-#
-                elif self.polygon.touches(
-                        Point(np.array(coords) + np.array([-1, 0]))):
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 0]) * adjustment))
-
-            elif self.polygon.touches(
-                    Point(np.array(coords) + np.array([0, -1]))):
-
-                #               ###
-                #                 #
-                #
-
-                if self.polygon.touches(
-                        Point(np.array(coords) + np.array([1, 0]))):
-
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([0, 1]) * adjustment))
-
-
-#                 #
-#               ###
-#
-                elif self.polygon.touches(
-                        Point(np.array(coords) + np.array([-1, 0]))):
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 1]) * adjustment))
-
-            elif self.polygon.touches(
-                    Point(np.array(coords) + np.array([1, -1]))):
-
-                #                #   # #
-                #               #     #
-                #                #
-                if self.polygon.touches(
-                        Point(np.array(coords) +
-                              np.array([1, 1]))) or self.polygon.touches(
-                                  Point(np.array(coords) +
-                                        np.array([-1, -1]))):
-                    res.append(tuple(np.array(coords) * scale_factor))
-
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 0]) * adjustment))
-
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([0, 1]) * adjustment))
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 1]) * adjustment))
-
-                #             #
-                #           ##
-                #
-                elif self.polygon.touches(
-                        Point(np.array(coords) + np.array([-1, 0]))):
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 0]) * adjustment))
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 1]) * adjustment))
-
-            elif self.polygon.touches(
-                    Point(np.array(coords) + np.array([1, 1]))):
-
-                #           #
-                #          # #
-                #
-                if self.polygon.touches(
-                        Point(np.array(coords) + np.array([-1, 1]))):
-                    res.append(tuple(np.array(coords) * scale_factor))
-
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 0]) * adjustment))
-
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([0, 1]) * adjustment))
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 1]) * adjustment))
-
-                #          ##
-                #            #
-                #
-                elif self.polygon.touches(
-                        Point(np.array(coords) + np.array([-1, 0]))):
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 0]) * adjustment))
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 1]) * adjustment))
-
-            elif self.polygon.touches(
-                    Point(np.array(coords) + np.array([-1, 1]))):
-
-                if self.polygon.touches(
-                        Point(np.array(coords) + np.array([-1, -1]))):
-                    res.append(tuple(np.array(coords) * scale_factor))
-
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 0]) * adjustment))
-
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([0, 1]) * adjustment))
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 1]) * adjustment))
-
-                elif self.polygon.touches(
-                        Point(np.array(coords) + np.array([1, 0]))):
-                    res.append(tuple(np.array(coords) * scale_factor))
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([0, 1]) * adjustment))
-
-            elif self.polygon.touches(
-                    Point(np.array(coords) + np.array([-1, -1]))):
-                if self.polygon.touches(
-                        Point(np.array(coords) + np.array([1, -1]))):
-                    res.append(tuple(np.array(coords) * scale_factor))
-
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 0]) * adjustment))
-
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([0, 1]) * adjustment))
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([1, 1]) * adjustment))
-
-                elif self.polygon.touches(
-                        Point(np.array(coords) + np.array([1, 0]))):
-                    res.append(tuple(np.array(coords) * scale_factor))
-                    res.append(
-                        tuple(
-                            np.array(coords) * scale_factor +
-                            np.array([0, 1]) * adjustment))
-
-            return res
-
         scale_factor = pow(2, scale_level)
-        new_coords = []
-        adjustment = scale_factor - 1
-        for point in self.polygon.exterior.coords:
-            new_coords.extend(scale_coords(point, scale_factor, adjustment))
-        #  return Polygon(new_coords).simplify(adjustment)
-        return Polygon(new_coords)
+        return self.scale_func(self.polygon, scale_factor)
 
     def get_full_mask(self, scale_level=0, tolerance=0):
         if scale_level != 0:
@@ -356,6 +163,193 @@ class Shape:
 
 class InvalidPolygonError(Exception):
     ...
+
+
+def shapely_scale(polygon, scale_factor, origin=(0, 0)):
+    return scale(polygon,
+                 xfact=scale_factor,
+                 yfact=scale_factor,
+                 origin=origin)
+
+
+def fit_scale(polygon, scale_factor, origin=(0, 0)):
+    def scale_coords(coords, scale_factor, adjustment):
+        res = []
+        #  import pudb
+        #  pudb.set_trace()
+
+        if polygon.touches(Point(np.array(coords) + np.array([0, 1]))):
+
+            #               ###
+            #               #
+            #
+            if polygon.touches(Point(np.array(coords) + np.array([1, 0]))):
+
+                res.append(tuple(np.array(coords) * scale_factor))
+
+    #               #
+    #               ###
+    #
+            elif polygon.touches(Point(np.array(coords) + np.array([-1, 0]))):
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 0]) * adjustment))
+
+        elif polygon.touches(Point(np.array(coords) + np.array([0, -1]))):
+
+            #               ###
+            #                 #
+            #
+
+            if polygon.touches(Point(np.array(coords) + np.array([1, 0]))):
+
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([0, 1]) * adjustment))
+
+    #                 #
+    #               ###
+    #
+            elif polygon.touches(Point(np.array(coords) + np.array([-1, 0]))):
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 1]) * adjustment))
+
+        elif polygon.touches(Point(np.array(coords) + np.array([1, -1]))):
+
+            #                #   # #
+            #               #     #
+            #                #
+            if polygon.touches(
+                    Point(np.array(coords) +
+                          np.array([1, 1]))) or polygon.touches(
+                              Point(np.array(coords) + np.array([-1, -1]))):
+                res.append(tuple(np.array(coords) * scale_factor))
+
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 0]) * adjustment))
+
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([0, 1]) * adjustment))
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 1]) * adjustment))
+
+            #             #
+            #           ##
+            #
+            elif polygon.touches(Point(np.array(coords) + np.array([-1, 0]))):
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 0]) * adjustment))
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 1]) * adjustment))
+
+        elif polygon.touches(Point(np.array(coords) + np.array([1, 1]))):
+
+            #           #
+            #          # #
+            #
+            if polygon.touches(Point(np.array(coords) + np.array([-1, 1]))):
+                res.append(tuple(np.array(coords) * scale_factor))
+
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 0]) * adjustment))
+
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([0, 1]) * adjustment))
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 1]) * adjustment))
+
+            #          ##
+            #            #
+            #
+            elif polygon.touches(Point(np.array(coords) + np.array([-1, 0]))):
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 0]) * adjustment))
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 1]) * adjustment))
+
+        elif polygon.touches(Point(np.array(coords) + np.array([-1, 1]))):
+
+            if polygon.touches(Point(np.array(coords) + np.array([-1, -1]))):
+                res.append(tuple(np.array(coords) * scale_factor))
+
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 0]) * adjustment))
+
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([0, 1]) * adjustment))
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 1]) * adjustment))
+
+            elif polygon.touches(Point(np.array(coords) + np.array([1, 0]))):
+                res.append(tuple(np.array(coords) * scale_factor))
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([0, 1]) * adjustment))
+
+        elif polygon.touches(Point(np.array(coords) + np.array([-1, -1]))):
+            if polygon.touches(Point(np.array(coords) + np.array([1, -1]))):
+                res.append(tuple(np.array(coords) * scale_factor))
+
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 0]) * adjustment))
+
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([0, 1]) * adjustment))
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([1, 1]) * adjustment))
+
+            elif polygon.touches(Point(np.array(coords) + np.array([1, 0]))):
+                res.append(tuple(np.array(coords) * scale_factor))
+                res.append(
+                    tuple(
+                        np.array(coords) * scale_factor +
+                        np.array([0, 1]) * adjustment))
+
+        return res
+
+    new_coords = []
+    adjustment = scale_factor - 1
+    for point in polygon.exterior.coords:
+        new_coords.extend(scale_coords(point, scale_factor, adjustment))
+    #  return Polygon(new_coords).simplify(adjustment)
+    return Polygon(new_coords)
 
 
 def main(argv):
