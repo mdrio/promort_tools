@@ -53,6 +53,7 @@ class PredictionImporter(object):
         )
         if response.status_code == requests.codes.CREATED:
             self.logger.info('Prediction created')
+            print(response.text)
         elif response.status_code == requests.codes.CONFLICT:
             self.logger.error('A prediction with the same label already exists')
             sys.exit('ERROR: duplicated prediction label')
