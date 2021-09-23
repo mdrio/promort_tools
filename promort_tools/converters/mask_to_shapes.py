@@ -391,12 +391,12 @@ def main(argv):
                       100) if round_to_0_100 else args.threshold
 
     shapes = convert_to_shapes(mask, original_resolution, threshold,
-                               args.scale_func)
+                               _get_scale_func(args.scale_func))
 
     _save_shapes(shapes, args.out_file)
 
 
-def get_scale_func(func_name: str) -> Callable:
+def _get_scale_func(func_name: str) -> Callable:
     return globals()[f'{func_name}_scale']
 
 
