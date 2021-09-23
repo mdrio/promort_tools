@@ -16,7 +16,6 @@
 #  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 #  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 import argparse
 import json
 import logging
@@ -26,9 +25,11 @@ from typing import Dict, Tuple
 
 import cv2
 import numpy as np
+import pyclipper
 import zarr
-from shapely.affinity import scale
+from shapely.affinity import scale, translate
 from shapely.geometry import Point, Polygon
+from shapely.ops import unary_union
 
 from promort_tools.libs.utils.logger import LOG_LEVELS, get_logger
 
@@ -90,7 +91,7 @@ def convert_to_shapes(mask: np.ndarray, original_resolution: Tuple[int, int],
 
 class Shape:
     def __init__(self, segments, scale_func=None):
-        self.scale_func = scale_func or shapely_scale
+        self.scale_func = scale_func or pyclipper_scale
         self.polygon = Polygon(segments)
 
     def __str__(self):
@@ -350,6 +351,33 @@ def fit_scale(polygon, scale_factor, origin=(0, 0)):
         new_coords.extend(scale_coords(point, scale_factor, adjustment))
     #  return Polygon(new_coords).simplify(adjustment)
     return Polygon(new_coords)
+
+
+def pyclipper_scale(polygon, scale_factor, origin=(0, 0)):
+    def get_poly_union(polygons):
+        pc = pyclipper.Pyclipper()
+        pc.AddPaths(polygons, pyclipper.PT_SUBJECT, True)
+        solution = pc.Execute(pyclipper.CT_UNION, pyclipper.PFT_NONZERO,
+                              pyclipper.PFT_NONZERO)
+        return solution[0]
+
+    scaled = scale(polygon,
+                   xfact=scale_factor,
+                   yfact=scale_factor,
+                   origin=origin)
+
+    x_translated = [scaled.exterior.coords]
+    scale_factor = int(scale_factor)
+    for i in range(1, scale_factor):
+        x_translated.append(translate(scaled, i).exterior.coords)
+
+    x_union = Polygon(get_poly_union(x_translated))
+
+    y_translated = [x_union.exterior.coords]
+    for i in range(1, scale_factor):
+        y_translated.append(translate(x_union, 0, i, 0).exterior.coords)
+    final = get_poly_union(y_translated)
+    return Polygon(final)
 
 
 def main(argv):
