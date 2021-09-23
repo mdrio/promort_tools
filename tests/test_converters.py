@@ -1,15 +1,14 @@
 import cv2
-import numpy as np
 import pytest
-from PIL import Image
 
-from promort_tools.converters.mask_to_shapes import convert_to_shapes
+from promort_tools.converters.mask_to_shapes import convert_to_shapes, fit_scale
 
 
 @pytest.mark.parametrize('scale_factor', [1, 2, 4])
-def test_mask_to_shapes_th_0(square_mask, scale_factor):
+@pytest.mark.parametrize('scale_func', [fit_scale])
+def test_mask_to_shapes_th_0(square_mask, scale_factor, scale_func):
     orig_res = [_ * scale_factor for _ in square_mask.shape]
-    shapes = convert_to_shapes(square_mask, orig_res, 0)
+    shapes = convert_to_shapes(square_mask, orig_res, 0, scale_func)
     assert len(shapes) == 1
     coordinates = sorted(shapes[0]['coordinates'])
     print(coordinates)
@@ -21,9 +20,10 @@ def test_mask_to_shapes_th_0(square_mask, scale_factor):
 
 
 @pytest.mark.parametrize('scale_factor', [1, 2, 4])
-def test_mask_to_shapes_th_50(square_mask, scale_factor):
+@pytest.mark.parametrize('scale_func', [fit_scale])
+def test_mask_to_shapes_th_50(square_mask, scale_factor, scale_func):
     orig_res = [_ * scale_factor for _ in square_mask.shape]
-    shapes = convert_to_shapes(square_mask, orig_res, 50)
+    shapes = convert_to_shapes(square_mask, orig_res, 50, scale_func)
     assert len(shapes) == 1
     coordinates = shapes[0]['coordinates']
     assert len(coordinates) == 5
@@ -34,9 +34,10 @@ def test_mask_to_shapes_th_50(square_mask, scale_factor):
 
 
 @pytest.mark.parametrize('scale_factor', [1, 2, 4, 8])
-def test_mask_to_shapes_th_100(square_mask, scale_factor):
+@pytest.mark.parametrize('scale_func', [fit_scale])
+def test_mask_to_shapes_th_100(square_mask, scale_factor, scale_func):
     orig_res = [_ * scale_factor for _ in square_mask.shape]
-    shapes = convert_to_shapes(square_mask, orig_res, 100)
+    shapes = convert_to_shapes(square_mask, orig_res, 100, scale_func)
     assert len(shapes) == 1
     coordinates = shapes[0]['coordinates']
     assert len(coordinates) == 5
@@ -48,7 +49,8 @@ def test_mask_to_shapes_th_100(square_mask, scale_factor):
 
 
 @pytest.mark.parametrize('scale_factor', [1, 2, 4, 8])
-def test_rhombus_to_shapes_th_100(rhombus_mask, scale_factor):
+@pytest.mark.parametrize('scale_func', [fit_scale])
+def test_rhombus_to_shapes_th_100(rhombus_mask, scale_factor, scale_func):
     orig_res = [_ * scale_factor for _ in rhombus_mask.shape]
 
     resized_mask = rhombus_mask.repeat(scale_factor, 0).repeat(scale_factor, 1)
@@ -59,7 +61,7 @@ def test_rhombus_to_shapes_th_100(rhombus_mask, scale_factor):
                                    method=cv2.CHAIN_APPROX_SIMPLE)
 
     c = contours
-    shapes = convert_to_shapes(rhombus_mask, orig_res, 100)
+    shapes = convert_to_shapes(rhombus_mask, orig_res, 100, scale_func)
     contours = contours[0].reshape(contours[0].shape[0], 2)
     contours = list([(float(_[0]), float(_[1])) for _ in contours])
     shape = shapes[0]['coordinates']

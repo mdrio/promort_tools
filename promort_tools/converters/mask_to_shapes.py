@@ -21,7 +21,7 @@ import json
 import logging
 import sys
 from math import log, sqrt
-from typing import Dict, Tuple
+from typing import Callable, Dict, Tuple
 
 import cv2
 import numpy as np
@@ -29,7 +29,6 @@ import pyclipper
 import zarr
 from shapely.affinity import scale, translate
 from shapely.geometry import Point, Polygon
-from shapely.ops import unary_union
 
 from promort_tools.libs.utils.logger import LOG_LEVELS, get_logger
 
@@ -37,7 +36,7 @@ LOGGER = logging.getLogger()
 
 
 def convert_to_shapes(mask: np.ndarray, original_resolution: Tuple[int, int],
-                      threshold: int):
+                      threshold: int, scale_func: Callable):
     def _apply_threshold(mask: np.ndarray, threshold: int) -> np.ndarray:
         mask[mask < threshold] = 0
         mask[mask >= threshold] = 1
@@ -55,7 +54,7 @@ def convert_to_shapes(mask: np.ndarray, original_resolution: Tuple[int, int],
         for x in contour:
             normalize_contour.append(tuple(x[0]))
         try:
-            return Shape(normalize_contour)
+            return Shape(normalize_contour, scale_func)
         except ValueError:
             return None
 
@@ -391,9 +390,14 @@ def main(argv):
     threshold = round(args.threshold *
                       100) if round_to_0_100 else args.threshold
 
-    shapes = convert_to_shapes(mask, original_resolution, threshold)
+    shapes = convert_to_shapes(mask, original_resolution, threshold,
+                               args.scale_func)
 
     _save_shapes(shapes, args.out_file)
+
+
+def get_scale_func(func_name: str) -> Callable:
+    return globals()[f'{func_name}_scale']
 
 
 def _make_parser():
@@ -420,6 +424,14 @@ def _make_parser():
     parser.add_argument('--log-file',
                         type=str,
                         default=None,
+                        help='log file (default=stderr)')
+
+    scale_funcs = ('shapely', 'fit', 'pyclipper')
+    parser.add_argument('--scale-func',
+                        dest='scale_func',
+                        type=str,
+                        choices=scale_funcs,
+                        default=scale_funcs[0],
                         help='log file (default=stderr)')
     return parser
 
