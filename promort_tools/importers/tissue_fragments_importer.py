@@ -67,7 +67,7 @@ class TissueFragmentsImporter(object):
         collection_id = self._create_collection(args.prediction_label)
         self.logger.info('Collection created with id %s', collection_id)
 
-        shapes = json.loads(args.shapes)
+        shapes = json.loads(args.shapes)['shapes']
         for shape in shapes:
             self._create_fragment(collection_id, shape)
 
