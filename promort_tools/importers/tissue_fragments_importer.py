@@ -37,10 +37,10 @@ class TissueFragmentsImporter(object):
         self.logger = logger
 
     def _import_tissue_fragments(self,
-                                 prediction_label,
+                                 prediction_id,
                                  shapes,
                                  provenance_json=None):
-        payload = {'label': prediction_label, 'shape_json': shapes}
+        payload = {'label': prediction_id, 'shape_json': shapes}
         if provenance_json:
             payload['provenance'] = json.dumps(provenance_json)
 
@@ -64,7 +64,7 @@ class TissueFragmentsImporter(object):
             self.logger.critical('Authentication error, exit')
             sys.exit('Authentication error, exit')
 
-        collection_id = self._create_collection(args.prediction_label)
+        collection_id = self._create_collection(args.prediction_id)
         self.logger.info('Collection created with id %s', collection_id)
 
         shapes = json.loads(args.shapes)['shapes']
@@ -99,10 +99,10 @@ def implementation(host, user, passwd, session_id, logger, args):
 
 
 def make_parser(parser):
-    parser.add_argument('--prediction-label',
+    parser.add_argument('--prediction-id',
                         type=str,
                         required=True,
-                        help='prediction label')
+                        help='prediction id')
     parser.add_argument('--shapes',
                         type=str,
                         required=True,
