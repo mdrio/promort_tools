@@ -69,6 +69,8 @@ class TissueFragmentsImporter(object):
 
         shapes = json.loads(args.shapes)['shapes']
         for shape in shapes:
+            self.logger.info('add to collection %s shape %s', collection_id,
+                             shape)
             self._create_fragment(collection_id, shape)
 
         self.promort_client.logout()
@@ -81,10 +83,15 @@ class TissueFragmentsImporter(object):
 
     def _create_fragment(self, collection_id, shape):
         self.logger.debug('creating shape %s', shape)
-        self.promort_client.post(
-            api_url=
-            f'api/tissue_fragments_collections/{collection_id}/fragments/',
-            json={'shape_json': shape})
+        try:
+            response = self.promort_client.post(
+                api_url=
+                f'api/tissue_fragments_collections/{collection_id}/fragments/',
+                json={'shape_json': shape})
+            self.logger.debug('response %s', response)
+            response.raise_for_status()
+        except Exception as ex:
+            self.logger.error(ex)
 
 
 help_doc = """
