@@ -89,6 +89,7 @@ class TissueFragmentsImporter(object):
                 f'api/tissue_fragments_collections/{collection_id}/fragments/',
                 json={'shape_json': shape})
             self.logger.debug('response %s', response)
+            self.logger.debug('response.text %s', response.text)
             response.raise_for_status()
         except Exception as ex:
             self.logger.error(ex)
