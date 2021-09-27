@@ -23,30 +23,24 @@ except ImportError:
     import json
 
 from ..libs.client import ProMortClient, ProMortAuthenticationError
+#  from promort_tools.libs.client import ProMortClient, ProMortAuthenticationError
 
-import sys, requests
+import sys
+import requests
 
 PREDICTION_TYPES = ['TISSUE', 'TUMOR', 'GLEASON']
 
 
-class PredictionImporter(object):
+class TissueFragmentsImporter(object):
     def __init__(self, host, user, passwd, session_id, logger):
         self.promort_client = ProMortClient(host, user, passwd, session_id)
         self.logger = logger
 
-    def _import_prediction(self,
-                           prediction_label,
-                           slide_label,
-                           prediction_type,
-                           omero_id=None,
-                           provenance_json=None):
-        payload = {
-            'label': prediction_label,
-            'slide': slide_label,
-            'type': prediction_type
-        }
-        if omero_id:
-            payload['omero_id'] = omero_id
+    def _import_tissue_fragments(self,
+                                 prediction_id,
+                                 shapes,
+                                 provenance_json=None):
+        payload = {'label': prediction_id, 'shape_json': shapes}
         if provenance_json:
             payload['provenance'] = json.dumps(provenance_json)
 
@@ -54,7 +48,6 @@ class PredictionImporter(object):
                                             payload=payload)
         if response.status_code == requests.codes.CREATED:
             self.logger.info('Prediction created')
-            print(response.text)
         elif response.status_code == requests.codes.CONFLICT:
             self.logger.error(
                 'A prediction with the same label already exists')
@@ -70,11 +63,36 @@ class PredictionImporter(object):
         except ProMortAuthenticationError:
             self.logger.critical('Authentication error, exit')
             sys.exit('Authentication error, exit')
-        self._import_prediction(args.prediction_label, args.slide_label,
-                                args.prediction_type,
-                                args.omero_id)  # TODO: add provenance
-        self.logger.info('Import job completed')
+
+        collection_id = self._create_collection(args.prediction_id)
+        self.logger.info('Collection created with id %s', collection_id)
+
+        shapes = json.loads(args.shapes)['shapes']
+        for shape in shapes:
+            self.logger.info('add to collection %s shape %s', collection_id,
+                             shape)
+            self._create_fragment(collection_id, shape)
+
         self.promort_client.logout()
+
+    def _create_collection(self, prediction_id) -> int:
+        response = self.promort_client.post(
+            api_url='api/tissue_fragments_collections/',
+            payload={'prediction': prediction_id})
+        return response.json()["id"]
+
+    def _create_fragment(self, collection_id, shape):
+        self.logger.debug('creating shape %s', shape)
+        try:
+            response = self.promort_client.post(
+                api_url=
+                f'api/tissue_fragments_collections/{collection_id}/fragments/',
+                json={'shape_json': shape})
+            self.logger.debug('response %s', response)
+            self.logger.debug('response.text %s', response.text)
+            response.raise_for_status()
+        except Exception as ex:
+            self.logger.error(ex)
 
 
 help_doc = """
@@ -83,33 +101,22 @@ TBD
 
 
 def implementation(host, user, passwd, session_id, logger, args):
-    prediction_importer = PredictionImporter(host, user, passwd, session_id,
-                                             logger)
+    prediction_importer = TissueFragmentsImporter(host, user, passwd,
+                                                  session_id, logger)
     prediction_importer.run(args)
 
 
 def make_parser(parser):
-    parser.add_argument('--prediction-label',
+    parser.add_argument('--prediction-id',
                         type=str,
                         required=True,
-                        help='prediction label')
-    parser.add_argument(
-        '--slide-label',
-        type=str,
-        required=True,
-        help='label of the slide to which the prediction refers')
-    parser.add_argument('--prediction-type',
+                        help='prediction id')
+    parser.add_argument('--shapes',
                         type=str,
-                        choices=PREDICTION_TYPES,
                         required=True,
-                        help='type of the prediction')
-    parser.add_argument(
-        '--omero-id',
-        type=int,
-        help='OMERO ID (if dataset was indexed as array dataset in OMERO)')
-    # TODO: add provenance
+                        help='json representing the tissue fragments shape')
 
 
 def register(registration_list):
     registration_list.append(
-        ('predictions_importer', help_doc, make_parser, implementation))
+        ('tissue_fragments_importer', help_doc, make_parser, implementation))

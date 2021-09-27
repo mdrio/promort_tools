@@ -23,15 +23,16 @@ from importlib import import_module
 from promort_tools.libs.utils.logger import get_logger, LOG_LEVELS
 
 SUBMODULES_NAMES = [
-    'slides_importer',
-    'predictions_importer'
+    'slides_importer', 'predictions_importer', 'tissue_fragments_importer'
 ]
 
-SUBMODULES = [import_module('%s.%s' % ('promort_tools.importers', n)) for n in SUBMODULES_NAMES]
+SUBMODULES = [
+    import_module('%s.%s' % ('promort_tools.importers', n))
+    for n in SUBMODULES_NAMES
+]
 
 
 class ProMortImporter(object):
-
     def __init__(self):
         self.supported_modules = []
         for m in SUBMODULES:
@@ -39,14 +40,31 @@ class ProMortImporter(object):
 
     def make_parser(self):
         parser = argparse.ArgumentParser(description='ProMort data importer')
-        parser.add_argument('--host', type=str, required=True, help='ProMort host')
-        parser.add_argument('--user', type=str, required=True, help='ProMort user')
-        parser.add_argument('--passwd', type=str, required=True, help='ProMost password')
-        parser.add_argument('--session-id', type=str, default='promort_sessionid',
+        parser.add_argument('--host',
+                            type=str,
+                            required=True,
+                            help='ProMort host')
+        parser.add_argument('--user',
+                            type=str,
+                            required=True,
+                            help='ProMort user')
+        parser.add_argument('--passwd',
+                            type=str,
+                            required=True,
+                            help='ProMost password')
+        parser.add_argument('--session-id',
+                            type=str,
+                            default='promort_sessionid',
                             help='ProMort session cookie name')
-        parser.add_argument('--log-level', type=str, choices=LOG_LEVELS,
-                            default='INFO', help='logging level (default=INFO')
-        parser.add_argument('--log-file', type=str, default=None, help='log file (default=stderr)')
+        parser.add_argument('--log-level',
+                            type=str,
+                            choices=LOG_LEVELS,
+                            default='INFO',
+                            help='logging level (default=INFO')
+        parser.add_argument('--log-file',
+                            type=str,
+                            default=None,
+                            help='log file (default=stderr)')
         subparsers = parser.add_subparsers()
         for k, h, addp, impl in self.supported_modules:
             subparser = subparsers.add_parser(k, help=h)
@@ -61,7 +79,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     logger = get_logger(args.log_level, args.log_file)
     try:
-        args.func(args.host, args.user, args.passwd, args.session_id, logger, args)
+        args.func(args.host, args.user, args.passwd, args.session_id, logger,
+                  args)
     except argparse.ArgumentError as arg_err:
         logger.critical(arg_err)
         sys.exit(arg_err)

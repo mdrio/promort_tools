@@ -24,7 +24,6 @@ from .errors import ProMortAuthenticationError, ProMortInternalServerError, User
 
 
 class ProMortClient(object):
-
     def __init__(self, host, user, passwd, session_cookie):
         self.promort_host = host
         self.promort_user = user
@@ -43,11 +42,15 @@ class ProMortClient(object):
 
     def login(self):
         url = urljoin(self.promort_host, 'api/auth/login/')
-        payload = {'username': self.promort_user, 'password': self.promort_passwd}
+        payload = {
+            'username': self.promort_user,
+            'password': self.promort_passwd
+        }
         response = self.promort_client.post(url, json=payload)
         if response.status_code == requests.codes.OK:
             self.csrf_token = self.promort_client.cookies.get('csrftoken')
-            self.session_id = self.promort_client.cookies.get(self.session_cookie)
+            self.session_id = self.promort_client.cookies.get(
+                self.session_cookie)
         else:
             raise ProMortAuthenticationError('Authentication failed')
 
@@ -73,11 +76,16 @@ class ProMortClient(object):
         else:
             raise UserNotLoggedIn('Login not performed')
 
-    def post(self, api_url, payload):
+    def post(self, api_url, payload=None, json=None):
         if self._logged_in():
             request_url = urljoin(self.promort_host, api_url)
-            response = self.promort_client.post(request_url, payload,
-                                                headers={'x-csrftoken': self.promort_client.cookies.get('csrftoken')})
+            response = self.promort_client.post(
+                request_url,
+                data=payload,
+                json=json,
+                headers={
+                    'x-csrftoken': self.promort_client.cookies.get('csrftoken')
+                })
             if response.status_code == requests.codes.INTERNAL_SERVER_ERROR:
                 raise ProMortInternalServerError(response.text)
             else:
@@ -88,8 +96,12 @@ class ProMortClient(object):
     def put(self, api_url, payload):
         if self._logged_in():
             request_url = urljoin(self.promort_host, api_url)
-            response = self.promort_client.put(request_url, payload,
-                                               headers={'x-csrftoken': self.promort_client.cookies.get('csrftoken')})
+            response = self.promort_client.put(
+                request_url,
+                payload,
+                headers={
+                    'x-csrftoken': self.promort_client.cookies.get('csrftoken')
+                })
             if response.status_code == requests.codes.INTERNAL_SERVER_ERROR:
                 raise ProMortInternalServerError(response.text)
             else:

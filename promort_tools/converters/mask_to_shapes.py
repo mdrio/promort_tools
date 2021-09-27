@@ -78,7 +78,7 @@ def convert_to_shapes(mask: np.ndarray, original_resolution: Tuple[int, int],
             'length': c.get_length(scale_factor),
             'area': c.get_area(scale_factor)
         } for c in cores]
-        return slide_shapes
+        return {'shapes': slide_shapes}
 
     _apply_threshold(mask, threshold)
 

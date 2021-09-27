@@ -40,5 +40,6 @@ setuptools.setup(
     scripts=[
         './promort_tools/importers/importer.py',
         './promort_tools/converters/zarr_to_tiledb.py',
-        './promort_tools/converters/mask_to_shapes.py'
+        './promort_tools/converters/mask_to_shapes.py',
+        './promort_tools/importers/tissue_fragments_importer.py'
     ])
