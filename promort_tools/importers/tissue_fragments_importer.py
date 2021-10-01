@@ -64,7 +64,9 @@ class TissueFragmentsImporter(object):
         collection_id = self._create_collection(args.prediction_id)
         self.logger.info("Collection created with id %s", collection_id)
 
-        shapes = json.loads(args.shapes)["shapes"]
+        with open(args.shapes) as f_obj:
+            shapes = json.load(f_obj)
+
         for shape in shapes:
             self.logger.info("add to collection %s shape %s", collection_id, shape)
             self._create_fragment(collection_id, shape)
@@ -109,10 +111,7 @@ def make_parser(parser):
         "--prediction-id", type=str, required=True, help="prediction id"
     )
     parser.add_argument(
-        "--shapes",
-        type=str,
-        required=True,
-        help="json representing the tissue fragments shape",
+        "shapes", type=str, help="file containing json-serialized shapes"
     )
 
 
