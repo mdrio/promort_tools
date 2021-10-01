@@ -23,12 +23,13 @@ except ImportError:
     import json
 
 from ..libs.client import ProMortClient, ProMortAuthenticationError
+
 #  from promort_tools.libs.client import ProMortClient, ProMortAuthenticationError
 
 import sys
 import requests
 
-PREDICTION_TYPES = ['TISSUE', 'TUMOR', 'GLEASON']
+PREDICTION_TYPES = ["TISSUE", "TUMOR", "GLEASON"]
 
 
 class TissueFragmentsImporter(object):
@@ -36,60 +37,56 @@ class TissueFragmentsImporter(object):
         self.promort_client = ProMortClient(host, user, passwd, session_id)
         self.logger = logger
 
-    def _import_tissue_fragments(self,
-                                 prediction_id,
-                                 shapes,
-                                 provenance_json=None):
-        payload = {'label': prediction_id, 'shape_json': shapes}
+    def _import_tissue_fragments(self, prediction_id, shapes, provenance_json=None):
+        payload = {"label": prediction_id, "shape_json": shapes}
         if provenance_json:
-            payload['provenance'] = json.dumps(provenance_json)
+            payload["provenance"] = json.dumps(provenance_json)
 
-        response = self.promort_client.post(api_url='api/predictions/',
-                                            payload=payload)
+        response = self.promort_client.post(api_url="api/predictions/", payload=payload)
         if response.status_code == requests.codes.CREATED:
-            self.logger.info('Prediction created')
+            self.logger.info("Prediction created")
         elif response.status_code == requests.codes.CONFLICT:
-            self.logger.error(
-                'A prediction with the same label already exists')
-            sys.exit('ERROR: duplicated prediction label')
+            self.logger.error("A prediction with the same label already exists")
+            sys.exit("ERROR: duplicated prediction label")
         elif response.status_code == requests.codes.BAD:
-            self.logger.error('ERROR while creating Prediction: {0}'.format(
-                response.text))
-            sys.exit('ERROR while creating Prediction')
+            self.logger.error(
+                "ERROR while creating Prediction: {0}".format(response.text)
+            )
+            sys.exit("ERROR while creating Prediction")
 
     def run(self, args):
         try:
             self.promort_client.login()
         except ProMortAuthenticationError:
-            self.logger.critical('Authentication error, exit')
-            sys.exit('Authentication error, exit')
+            self.logger.critical("Authentication error, exit")
+            sys.exit("Authentication error, exit")
 
         collection_id = self._create_collection(args.prediction_id)
-        self.logger.info('Collection created with id %s', collection_id)
+        self.logger.info("Collection created with id %s", collection_id)
 
-        shapes = json.loads(args.shapes)['shapes']
+        shapes = json.loads(args.shapes)["shapes"]
         for shape in shapes:
-            self.logger.info('add to collection %s shape %s', collection_id,
-                             shape)
+            self.logger.info("add to collection %s shape %s", collection_id, shape)
             self._create_fragment(collection_id, shape)
 
         self.promort_client.logout()
 
     def _create_collection(self, prediction_id) -> int:
         response = self.promort_client.post(
-            api_url='api/tissue_fragments_collections/',
-            payload={'prediction': prediction_id})
+            api_url="api/tissue_fragments_collections/",
+            payload={"prediction": prediction_id},
+        )
         return response.json()["id"]
 
     def _create_fragment(self, collection_id, shape):
-        self.logger.debug('creating shape %s', shape)
+        self.logger.debug("creating shape %s", shape)
         try:
             response = self.promort_client.post(
-                api_url=
-                f'api/tissue_fragments_collections/{collection_id}/fragments/',
-                json={'shape_json': shape})
-            self.logger.debug('response %s', response)
-            self.logger.debug('response.text %s', response.text)
+                api_url=f"api/tissue_fragments_collections/{collection_id}/fragments/",
+                json={"shape_json": shape},
+            )
+            self.logger.debug("response %s", response)
+            self.logger.debug("response.text %s", response.text)
             response.raise_for_status()
         except Exception as ex:
             self.logger.error(ex)
@@ -101,22 +98,25 @@ TBD
 
 
 def implementation(host, user, passwd, session_id, logger, args):
-    prediction_importer = TissueFragmentsImporter(host, user, passwd,
-                                                  session_id, logger)
+    prediction_importer = TissueFragmentsImporter(
+        host, user, passwd, session_id, logger
+    )
     prediction_importer.run(args)
 
 
 def make_parser(parser):
-    parser.add_argument('--prediction-id',
-                        type=str,
-                        required=True,
-                        help='prediction id')
-    parser.add_argument('--shapes',
-                        type=str,
-                        required=True,
-                        help='json representing the tissue fragments shape')
+    parser.add_argument(
+        "--prediction-id", type=str, required=True, help="prediction id"
+    )
+    parser.add_argument(
+        "--shapes",
+        type=str,
+        required=True,
+        help="json representing the tissue fragments shape",
+    )
 
 
 def register(registration_list):
     registration_list.append(
-        ('tissue_fragments_importer', help_doc, make_parser, implementation))
+        ("tissue_fragments_importer", help_doc, make_parser, implementation)
+    )
