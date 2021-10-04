@@ -65,7 +65,7 @@ class TissueFragmentsImporter(object):
         self.logger.info("Collection created with id %s", collection_id)
 
         with open(args.shapes) as f_obj:
-            shapes = json.load(f_obj)
+            shapes = json.load(f_obj)["shapes"]
 
         for shape in shapes:
             self.logger.info("add to collection %s shape %s", collection_id, shape)
