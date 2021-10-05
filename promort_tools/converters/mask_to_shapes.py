@@ -21,23 +21,23 @@ import argparse
 import json
 import logging
 import sys
-from math import log, sqrt
-from typing import Callable, Dict, List, Tuple
+from dataclasses import dataclass
+from typing import Callable, Dict, Tuple
 
 import cv2
 import numpy as np
 import zarr
-from shapely.affinity import scale as shapely_scale
 from shapely.geometry import Polygon
 
 from promort_tools.libs.utils.logger import LOG_LEVELS, get_logger
 
 LOGGER = logging.getLogger()
 
+COORDS = Tuple[float, float]
+
 
 def convert_to_shapes(
     mask: np.ndarray,
-    original_resolution: Tuple[int, int],
     threshold: int,
     scaler: "Scaler",
 ):
@@ -58,7 +58,7 @@ def convert_to_shapes(
         for x in contour:
             normalize_contour.append(tuple(x[0]))
         try:
-            return Shape(normalize_contour, scaler)
+            return Shape(normalize_contour)
         except ValueError:
             return None
 
@@ -69,37 +69,30 @@ def convert_to_shapes(
                 accepted_cores.append(core)
         return accepted_cores
 
-    def _get_scale_factor(slide_resolution, mask_resolution):
-        scale_factor = sqrt(
-            (slide_resolution[0] * slide_resolution[1])
-            / (mask_resolution[0] * mask_resolution[1])
-        )
-        LOGGER.info("Scale factor is %r", scale_factor)
-        return scale_factor
-
-    def _build_slide_json(cores, scale_factor):
-        scale_factor = log(scale_factor, 2)
+    def _build_slide_json(cores):
         slide_shapes = [
             {
-                "coordinates": c.get_coordinates(scale_factor),
-                "length": c.get_length(scale_factor),
-                "area": c.get_area(scale_factor),
+                "coordinates": c.get_coordinates(),
+                "length": c.get_length(),
+                "area": c.get_area(),
             }
             for c in cores
         ]
         return {"shapes": slide_shapes}
 
+    def _scale_cores(scaler):
+        return [scaler.scale(core) for core in cores]
+
     _apply_threshold(mask, threshold)
 
-    cores = _filter_cores(_get_cores(mask), mask.size)
-    #  grouped_cores = self._group_nearest_cores(cores, mask.shape[0])
-    scale_factor = _get_scale_factor(original_resolution, mask.shape)
-    return _build_slide_json(cores, scale_factor)
+    cores = _get_cores(mask)
+    cores = _scale_cores(scaler)
+    cores = _filter_cores(cores, mask.size)
+    return _build_slide_json(cores)
 
 
 class Shape:
-    def __init__(self, segments, scaler: "Scaler"):
-        self._scaler = scaler
+    def __init__(self, segments):
         self.polygon = Polygon(segments)
 
     def __str__(self):
@@ -117,95 +110,70 @@ class Shape:
         except IndexError:
             raise InvalidPolygonError()
 
-    def get_coordinates(self, scale_level=0):
-        return self._scaler.get_coordinates(self, pow(2, scale_level))
+    def get_coordinates(self):
+        return list(self.polygon.exterior.coords)
 
-    def get_area(self, scale_level=0):
-        return self._scaler.get_area(self, pow(2, scale_level))
+    def get_area(self):
+        return self.polygon.area
 
-    def get_length(self, scale_level=0):
-        return self._scaler.get_length(self, pow(2, scale_level))
+    def get_length(self):
+        return self.polygon.length
 
-    def _touch_or_contains(self, point):
-        return self.polygon.touches(point) or self.polygon.contains(point)
-
-    def _rescale_polygon(self, scale_level):
-        scale_factor = pow(2, scale_level)
-        return self._scaler(self, scale_factor)
-
-    def get_full_mask(self, scale_level=0, tolerance=0):
-        if scale_level != 0:
-            polygon = self._rescale_polygon(scale_level)
-            scale_factor = pow(2, scale_level)
-        else:
-            polygon = self.polygon
-            scale_factor = 1
-        if tolerance > 0:
-            polygon = polygon.simplify(tolerance, preserve_topology=False)
-        bounds = self.get_bounds()
-        box_height = int((bounds["y_max"] - bounds["y_min"]) * scale_factor)
-        box_width = int((bounds["x_max"] - bounds["x_min"]) * scale_factor)
-        mask = np.zeros((box_height, box_width), dtype=np.uint8)
-        polygon_path = polygon.exterior.coords[:]
-        polygon_path = [
-            (
-                int(x - bounds["x_min"] * scale_factor),
-                int(y - bounds["y_min"] * scale_factor),
-            )
-            for x, y in polygon_path
-        ]
-        cv2.fillPoly(
-            mask,
-            np.array(
-                [
-                    polygon_path,
-                ]
-            ),
-            1,
-        )
-        return mask
-
-
-COORDS = Tuple[float, float]
+    #  def get_full_mask(self, scale_level=0, tolerance=0):
+    #      if scale_level != 0:
+    #          polygon = self._rescale_polygon(scale_level)
+    #          scale_factor = pow(2, scale_level)
+    #      else:
+    #          polygon = self.polygon
+    #          scale_factor = 1
+    #      if tolerance > 0:
+    #          polygon = polygon.simplify(tolerance, preserve_topology=False)
+    #      bounds = self.get_bounds()
+    #      box_height = int((bounds["y_max"] - bounds["y_min"]) * scale_factor)
+    #      box_width = int((bounds["x_max"] - bounds["x_min"]) * scale_factor)
+    #      mask = np.zeros((box_height, box_width), dtype=np.uint8)
+    #      polygon_path = polygon.exterior.coords[:]
+    #      polygon_path = [
+    #          (
+    #              int(x - bounds["x_min"] * scale_factor),
+    #              int(y - bounds["y_min"] * scale_factor),
+    #          )
+    #          for x, y in polygon_path
+    #      ]
+    #      cv2.fillPoly(
+    #          mask,
+    #          np.array(
+    #              [
+    #                  polygon_path,
+    #              ]
+    #          ),
+    #          1,
+    #      )
+    #      return mask
 
 
 class Scaler(abc.ABC):
     @abc.abstractmethod
-    def get_coordinates(self, shape: Shape, factor: float) -> List[COORDS]:
-        ...
-
-    @abc.abstractmethod
-    def get_area(self, shape: Shape, factor: float) -> float:
-        ...
-
-    @abc.abstractmethod
-    def get_length(self, shape: Shape, factor: float) -> float:
+    def scale(self, shape: Shape) -> Shape:
         ...
 
 
+@dataclass
 class BasicScaler(Scaler):
-    def __init__(self, bounding_box: Tuple[int, int]):
-        self.bounding_box = np.array(bounding_box)
+    init_resolution: Tuple[int, int]
+    dest_resolution: Tuple[int, int]
 
-    def get_coordinates(self, shape: Shape, factor: float) -> List[COORDS]:
-        return list(self._scale(shape.polygon, factor).exterior.coords)
+    def scale(self, shape: Shape) -> Shape:
+        if self.init_resolution == self.dest_resolution:
+            return shape
 
-    def get_area(self, shape: Shape, factor: float) -> float:
-        return self._scale(shape.polygon, factor).area
-
-    def get_length(self, shape: Shape, factor: float) -> float:
-        polygon = self._scale(shape.polygon, factor)
-        polygon_path = np.array(polygon.exterior.coords[:])
-        _, radius = cv2.minEnclosingCircle(polygon_path.astype(int))
-        return radius * 2
-
-    def _scale(self, polygon, factor):
+        polygon = shape.polygon
         points = np.array(list(polygon.exterior.coords))
         points = points + 0.5
-        norm_points = points / self.bounding_box
-        denorm_scaled_points = norm_points * self.bounding_box * factor
 
-        return Polygon(denorm_scaled_points)
+        norm_points = points / np.array(self.init_resolution)
+        new_points = norm_points * np.array(self.dest_resolution)
+        return Shape(new_points)
 
 
 def main(argv):
@@ -218,8 +186,8 @@ def main(argv):
     mask, original_resolution, round_to_0_100 = _read_group(args.mask)
     threshold = round(args.threshold * 100) if round_to_0_100 else args.threshold
 
-    scaler = BasicScaler(mask.shape)
-    shapes = convert_to_shapes(mask, original_resolution, threshold, scaler)
+    scaler = BasicScaler(mask.shape, original_resolution)
+    shapes = convert_to_shapes(mask, threshold, scaler)
 
     _save_shapes(shapes, args.out_file)
 

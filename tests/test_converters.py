@@ -7,8 +7,8 @@ from promort_tools.converters.mask_to_shapes import convert_to_shapes, BasicScal
 @pytest.mark.parametrize("scale_factor", [1, 2, 4, 8])
 def test_mask_to_shapes_th_0(square_mask, scale_factor):
     orig_res = [_ * scale_factor for _ in square_mask.shape]
-    scaler = BasicScaler(square_mask.shape)
-    shapes = convert_to_shapes(square_mask, orig_res, 0, scaler)["shapes"]
+    scaler = BasicScaler(square_mask.shape, orig_res)
+    shapes = convert_to_shapes(square_mask, 0, scaler)["shapes"]
     assert len(shapes) == 1
     coordinates = sorted(shapes[0]["coordinates"])
     print(coordinates, orig_res)
@@ -25,8 +25,8 @@ def test_mask_to_shapes_th_0(square_mask, scale_factor):
 @pytest.mark.parametrize("scale_factor", [1, 2, 4, 8])
 def test_mask_to_shapes_th_50(square_mask, scale_factor):
     orig_res = [_ * scale_factor for _ in square_mask.shape]
-    scaler = BasicScaler(square_mask.shape)
-    shapes = convert_to_shapes(square_mask, orig_res, 50, scaler)["shapes"]
+    scaler = BasicScaler(square_mask.shape, orig_res)
+    shapes = convert_to_shapes(square_mask, 50, scaler)["shapes"]
     assert len(shapes) == 1
     coordinates = shapes[0]["coordinates"]
     assert len(coordinates) == 5
@@ -42,8 +42,8 @@ def test_mask_to_shapes_th_50(square_mask, scale_factor):
 @pytest.mark.parametrize("scale_factor", [1, 2, 4, 8])
 def test_mask_to_shapes_th_100(square_mask, scale_factor):
     orig_res = [_ * scale_factor for _ in square_mask.shape]
-    scaler = BasicScaler(square_mask.shape)
-    shapes = convert_to_shapes(square_mask, orig_res, 100, scaler)["shapes"]
+    scaler = BasicScaler(square_mask.shape, orig_res)
+    shapes = convert_to_shapes(square_mask, 100, scaler)["shapes"]
     assert len(shapes) == 1
     coordinates = shapes[0]["coordinates"]
     assert len(coordinates) == 5
