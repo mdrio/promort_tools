@@ -24,8 +24,6 @@ except ImportError:
 
 from ..libs.client import ProMortClient, ProMortAuthenticationError
 
-#  from promort_tools.libs.client import ProMortClient, ProMortAuthenticationError
-
 import sys
 import requests
 
