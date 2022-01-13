@@ -145,43 +145,6 @@ class Shape:
             "area": self.get_area(),
         }
 
-    #  def _rescale_polygon(self, scale_level):
-    #      scale_factor = pow(2, scale_level)
-    #      return self._scaler(self, scale_factor)
-
-    #  def get_full_mask(self, scale_level=0, tolerance=0):
-    #      if scale_level != 0:
-    #          polygon = self._rescale_polygon(scale_level)
-    #          scale_factor = pow(2, scale_level)
-    #      else:
-    #          polygon = self.polygon
-    #          scale_factor = 1
-    #      if tolerance > 0:
-    #          polygon = polygon.simplify(tolerance, preserve_topology=False)
-    #      bounds = self.get_bounds()
-    #      box_height = int((bounds["y_max"] - bounds["y_min"]) * scale_factor)
-    #      box_width = int((bounds["x_max"] - bounds["x_min"]) * scale_factor)
-    #      mask = np.zeros((box_height, box_width), dtype=np.uint8)
-    #      polygon_path = polygon.exterior.coords[:]
-    #      polygon_path = [
-    #          (
-    #              int(x - bounds["x_min"] * scale_factor),
-    #              int(y - bounds["y_min"] * scale_factor),
-    #          )
-    #          for x, y in polygon_path
-    #      ]
-    #      cv2.fillPoly(
-    #          mask,
-    #          np.array(
-    #              [
-    #                  polygon_path,
-    #              ]
-    #          ),
-    #          1,
-    #      )
-    #      return mask
-    #
-
 
 class Scaler(abc.ABC):
     @abc.abstractmethod
@@ -190,17 +153,9 @@ class Scaler(abc.ABC):
 
 
 class BasicScaler(Scaler):
-    def __init__(self, bounding_box: Tuple[int, int]):
-        self.bounding_box = np.array(bounding_box)
-
     def scale(self, shape: Shape, factor) -> Shape:
-        #  if factor == 1:
-        #      return shape
         points = np.array(shape.get_coordinates())
         points = points + 0.5
-        #  norm_points = points / self.bounding_box
-        #  denorm_scaled_points = norm_points * self.bounding_box * factor
-
         return Shape(Polygon(points * factor))
 
 
