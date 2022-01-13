@@ -169,7 +169,7 @@ def main(argv):
     mask, original_resolution, round_to_0_100 = _read_group(args.mask)
     threshold = round(args.threshold * 100) if round_to_0_100 else args.threshold
 
-    scaler = BasicScaler(mask.shape)
+    scaler = BasicScaler()
     shapes = convert_to_shapes(mask, original_resolution, threshold, scaler)
 
     _save_shapes(shapes, args.out_file)
