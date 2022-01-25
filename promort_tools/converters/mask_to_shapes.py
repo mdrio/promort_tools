@@ -21,18 +21,20 @@ import argparse
 import json
 import logging
 import sys
-from math import log, sqrt
+from math import sqrt
 from typing import Callable, Dict, List, Tuple
 
 import cv2
 import numpy as np
 import zarr
-from shapely.affinity import scale as shapely_scale
-from shapely.geometry import Polygon
+from shapely.geometry import Point, Polygon
 
 from promort_tools.libs.utils.logger import LOG_LEVELS, get_logger
 
 LOGGER = logging.getLogger()
+
+
+COORDS = Tuple[float, float]
 
 
 def convert_to_shapes(
@@ -58,7 +60,7 @@ def convert_to_shapes(
         for x in contour:
             normalize_contour.append(tuple(x[0]))
         try:
-            return Shape(normalize_contour, scaler)
+            return Shape(normalize_contour)
         except ValueError:
             return None
 
@@ -78,15 +80,7 @@ def convert_to_shapes(
         return scale_factor
 
     def _build_slide_json(cores, scale_factor):
-        scale_factor = log(scale_factor, 2)
-        slide_shapes = [
-            {
-                "coordinates": c.get_coordinates(scale_factor),
-                "length": c.get_length(scale_factor),
-                "area": c.get_area(scale_factor),
-            }
-            for c in cores
-        ]
+        slide_shapes = [scaler.scale(core, scale_factor).info() for core in cores]
         return {"shapes": slide_shapes}
 
     _apply_threshold(mask, threshold)
@@ -98,15 +92,15 @@ def convert_to_shapes(
 
 
 class Shape:
-    def __init__(self, segments, scaler: "Scaler"):
-        self._scaler = scaler
-        self.polygon = Polygon(segments)
+    def __init__(self, segments):
+        self._polygon = Polygon(segments)
+        self._area = self._polygon.area
 
     def __str__(self):
-        return str(self.polygon)
+        return str(self._polygon)
 
     def get_bounds(self):
-        bounds = self.polygon.bounds
+        bounds = self._polygon.bounds
         try:
             return {
                 "x_min": bounds[0],
@@ -117,95 +111,49 @@ class Shape:
         except IndexError:
             raise InvalidPolygonError()
 
-    def get_coordinates(self, scale_level=0):
-        return self._scaler.get_coordinates(self, pow(2, scale_level))
+    def get_coordinates(
+        self,
+    ) -> List[COORDS]:
+        return list(self._polygon.exterior.coords)
 
-    def get_area(self, scale_level=0):
-        return self._scaler.get_area(self, pow(2, scale_level))
+    def get_area(self) -> float:
+        return self._area
 
-    def get_length(self, scale_level=0):
-        return self._scaler.get_length(self, pow(2, scale_level))
+    def get_length(self) -> float:
+        #  polygon_path = np.array(self._polygon.exterior.coords[:])
+        #  _, radius = cv2.minEnclosingCircle(polygon_path.astype(int))
+        #  return radius * 2
 
-    def _touch_or_contains(self, point):
-        return self.polygon.touches(point) or self.polygon.contains(point)
+        # from https://gis.stackexchange.com/questions/295874/getting-polygon-breadth-in-shapely
+        box = self._polygon.minimum_rotated_rectangle
+        x, y = box.exterior.coords.xy
 
-    def _rescale_polygon(self, scale_level):
-        scale_factor = pow(2, scale_level)
-        return self._scaler(self, scale_factor)
-
-    def get_full_mask(self, scale_level=0, tolerance=0):
-        if scale_level != 0:
-            polygon = self._rescale_polygon(scale_level)
-            scale_factor = pow(2, scale_level)
-        else:
-            polygon = self.polygon
-            scale_factor = 1
-        if tolerance > 0:
-            polygon = polygon.simplify(tolerance, preserve_topology=False)
-        bounds = self.get_bounds()
-        box_height = int((bounds["y_max"] - bounds["y_min"]) * scale_factor)
-        box_width = int((bounds["x_max"] - bounds["x_min"]) * scale_factor)
-        mask = np.zeros((box_height, box_width), dtype=np.uint8)
-        polygon_path = polygon.exterior.coords[:]
-        polygon_path = [
-            (
-                int(x - bounds["x_min"] * scale_factor),
-                int(y - bounds["y_min"] * scale_factor),
-            )
-            for x, y in polygon_path
-        ]
-        cv2.fillPoly(
-            mask,
-            np.array(
-                [
-                    polygon_path,
-                ]
-            ),
-            1,
+        edge_length = (
+            Point(x[0], y[0]).distance(Point(x[1], y[1])),
+            Point(x[1], y[1]).distance(Point(x[2], y[2])),
         )
-        return mask
+        length = max(edge_length)
+        return length
 
-
-COORDS = Tuple[float, float]
+    def info(self):
+        return {
+            "coordinates": self.get_coordinates(),
+            "length": self.get_length(),
+            "area": self.get_area(),
+        }
 
 
 class Scaler(abc.ABC):
     @abc.abstractmethod
-    def get_coordinates(self, shape: Shape, factor: float) -> List[COORDS]:
-        ...
-
-    @abc.abstractmethod
-    def get_area(self, shape: Shape, factor: float) -> float:
-        ...
-
-    @abc.abstractmethod
-    def get_length(self, shape: Shape, factor: float) -> float:
+    def scale(self, shape: Shape, factor: float) -> Shape:
         ...
 
 
 class BasicScaler(Scaler):
-    def __init__(self, bounding_box: Tuple[int, int]):
-        self.bounding_box = np.array(bounding_box)
-
-    def get_coordinates(self, shape: Shape, factor: float) -> List[COORDS]:
-        return list(self._scale(shape.polygon, factor).exterior.coords)
-
-    def get_area(self, shape: Shape, factor: float) -> float:
-        return self._scale(shape.polygon, factor).area
-
-    def get_length(self, shape: Shape, factor: float) -> float:
-        polygon = self._scale(shape.polygon, factor)
-        polygon_path = np.array(polygon.exterior.coords[:])
-        _, radius = cv2.minEnclosingCircle(polygon_path.astype(int))
-        return radius * 2
-
-    def _scale(self, polygon, factor):
-        points = np.array(list(polygon.exterior.coords))
+    def scale(self, shape: Shape, factor) -> Shape:
+        points = np.array(shape.get_coordinates())
         points = points + 0.5
-        norm_points = points / self.bounding_box
-        denorm_scaled_points = norm_points * self.bounding_box * factor
-
-        return Polygon(denorm_scaled_points)
+        return Shape(Polygon(points * factor))
 
 
 def main(argv):
@@ -218,7 +166,7 @@ def main(argv):
     mask, original_resolution, round_to_0_100 = _read_group(args.mask)
     threshold = round(args.threshold * 100) if round_to_0_100 else args.threshold
 
-    scaler = BasicScaler(mask.shape)
+    scaler = BasicScaler()
     shapes = convert_to_shapes(mask, original_resolution, threshold, scaler)
 
     _save_shapes(shapes, args.out_file)
