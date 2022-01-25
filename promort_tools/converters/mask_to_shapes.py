@@ -135,9 +135,6 @@ class Shape:
         length = max(edge_length)
         return length
 
-    def _touch_or_contains(self, point):
-        return self._polygon.touches(point) or self._polygon.contains(point)
-
     def info(self):
         return {
             "coordinates": self.get_coordinates(),
