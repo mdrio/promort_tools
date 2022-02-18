@@ -26,7 +26,7 @@ from ..libs.client import ProMortClient, ProMortAuthenticationError
 
 import sys, requests
 
-PREDICTION_TYPES = ['TISSUE', 'TUMOR', 'GLEASON']
+PREDICTION_TYPES = ["TISSUE", "TUMOR", "GLEASON"]
 
 
 class PredictionImporter(object):
@@ -34,46 +34,53 @@ class PredictionImporter(object):
         self.promort_client = ProMortClient(host, user, passwd, session_id)
         self.logger = logger
 
-    def _import_prediction(self,
-                           prediction_label,
-                           slide_label,
-                           prediction_type,
-                           omero_id=None,
-                           provenance_json=None):
+    def _import_prediction(
+        self,
+        prediction_label,
+        slide_label,
+        prediction_type,
+        omero_id=None,
+        review_required=False,
+        provenance_json=None,
+    ):
         payload = {
-            'label': prediction_label,
-            'slide': slide_label,
-            'type': prediction_type
+            "label": prediction_label,
+            "slide": slide_label,
+            "type": prediction_type,
+            "review_required": review_required,
         }
         if omero_id:
-            payload['omero_id'] = omero_id
+            payload["omero_id"] = omero_id
         if provenance_json:
-            payload['provenance'] = json.dumps(provenance_json)
+            payload["provenance"] = json.dumps(provenance_json)
 
-        response = self.promort_client.post(api_url='api/predictions/',
-                                            payload=payload)
+        response = self.promort_client.post(api_url="api/predictions/", payload=payload)
         if response.status_code == requests.codes.CREATED:
-            self.logger.info('Prediction created')
+            self.logger.info("Prediction created")
             print(response.text)
         elif response.status_code == requests.codes.CONFLICT:
-            self.logger.error(
-                'A prediction with the same label already exists')
-            sys.exit('ERROR: duplicated prediction label')
+            self.logger.error("A prediction with the same label already exists")
+            sys.exit("ERROR: duplicated prediction label")
         elif response.status_code == requests.codes.BAD:
-            self.logger.error('ERROR while creating Prediction: {0}'.format(
-                response.text))
-            sys.exit('ERROR while creating Prediction')
+            self.logger.error(
+                "ERROR while creating Prediction: {0}".format(response.text)
+            )
+            sys.exit("ERROR while creating Prediction")
 
     def run(self, args):
         try:
             self.promort_client.login()
         except ProMortAuthenticationError:
-            self.logger.critical('Authentication error, exit')
-            sys.exit('Authentication error, exit')
-        self._import_prediction(args.prediction_label, args.slide_label,
-                                args.prediction_type,
-                                args.omero_id)  # TODO: add provenance
-        self.logger.info('Import job completed')
+            self.logger.critical("Authentication error, exit")
+            sys.exit("Authentication error, exit")
+        self._import_prediction(
+            args.prediction_label,
+            args.slide_label,
+            args.prediction_type,
+            args.omero_id,
+            args.review_required,
+        )  # TODO: add provenance
+        self.logger.info("Import job completed")
         self.promort_client.logout()
 
 
@@ -83,33 +90,44 @@ TBD
 
 
 def implementation(host, user, passwd, session_id, logger, args):
-    prediction_importer = PredictionImporter(host, user, passwd, session_id,
-                                             logger)
+    prediction_importer = PredictionImporter(host, user, passwd, session_id, logger)
     prediction_importer.run(args)
 
 
+# TODO: add provenance
 def make_parser(parser):
-    parser.add_argument('--prediction-label',
-                        type=str,
-                        required=True,
-                        help='prediction label')
     parser.add_argument(
-        '--slide-label',
+        "--prediction-label",
         type=str,
         required=True,
-        help='label of the slide to which the prediction refers')
-    parser.add_argument('--prediction-type',
-                        type=str,
-                        choices=PREDICTION_TYPES,
-                        required=True,
-                        help='type of the prediction')
+        help="prediction label"
+    )
     parser.add_argument(
-        '--omero-id',
+        "--slide-label",
+        type=str,
+        required=True,
+        help="label of the slide to which the prediction refers",
+    )
+    parser.add_argument(
+        "--prediction-type",
+        type=str,
+        choices=PREDICTION_TYPES,
+        required=True,
+        help="type of the prediction",
+    )
+    parser.add_argument(
+        "--omero-id",
         type=int,
-        help='OMERO ID (if dataset was indexed as array dataset in OMERO)')
-    # TODO: add provenance
+        help="OMERO ID (if dataset was indexed as array dataset in OMERO)",
+    )
+    parser.add_argument(
+        "--review-required",
+        action="store_true",
+        help="require a review for this prediction object",
+    )
 
 
 def register(registration_list):
     registration_list.append(
-        ('predictions_importer', help_doc, make_parser, implementation))
+        ("predictions_importer", help_doc, make_parser, implementation)
+    )
