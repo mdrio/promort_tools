@@ -52,7 +52,6 @@ class PredictionImporter(object):
         if omero_id:
             payload["omero_id"] = omero_id
         if provenance_json:
-            #  payload["provenance"] = json.dumps(provenance_json)
             payload["provenance"] = provenance_json
 
         self.logger.info("payload %s", payload)
