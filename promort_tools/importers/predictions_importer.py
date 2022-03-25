@@ -128,7 +128,18 @@ def make_parser(parser):
     parser.add_argument(
         "--provenance",
         type=json.loads,
-        help="json representing provenance data",
+        help="""
+            json representing provenance data.
+            Example:
+            {  "name": "tumor",
+              "model": "tumor-model",
+              "params": {
+                "param": 1
+              },
+              "start_date": "2022-03-25T10:19:58.0",
+              "end_date": "2022-03-25T10:20:58.0"
+            }
+        """,
         required=False,
     )
 
